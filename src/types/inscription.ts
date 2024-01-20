@@ -14,7 +14,7 @@ export interface InscriptionXinsInfo {
   mintStatus: U8
 }
 
-export interface InscriptionInfo {
+export interface InscriptionXudtInfo {
   decimal: U8
   name: string
   symbol: string
@@ -31,18 +31,18 @@ export interface JoyIDConfig {
 
 interface BaseParams {
   collector: Collector
+  joyID?: JoyIDConfig
+  cellDeps: CKBComponents.CellDep[]
   address: Address
   feeRate?: bigint
 }
 
 export interface DeployParams extends BaseParams {
-  info: InscriptionInfo
-  joyID?: JoyIDConfig
+  info: InscriptionXudtInfo
 }
 
 export interface DeployXinsParams extends BaseParams {
   info: InscriptionXinsInfo
-  joyID?: JoyIDConfig
 }
 
 export interface DeployResult {
@@ -60,12 +60,10 @@ export interface DeployXinsResult {
 export interface MintParams extends BaseParams {
   inscriptionId: Byte32
   mintLimit: bigint
-  joyID?: JoyIDConfig
 }
 
 export interface CloseParams extends BaseParams {
   inscriptionId: Byte32
-  joyID?: JoyIDConfig
 }
 
 export interface ActualSupplyParams {
@@ -77,15 +75,13 @@ export interface ActualSupplyParams {
 export interface InfoRebaseParams extends BaseParams {
   inscriptionId: Byte32
   actualSupply: bigint
-  joyID?: JoyIDConfig
 }
 
-export interface RebaseMintParams extends BaseParams {
-  inscriptionInfo: InscriptionInfo
+export interface RebaseMintXudtParams extends BaseParams {
+  inscriptionXudtInfo: InscriptionXudtInfo
   inscriptionId: Byte32
   actualSupply: bigint
   cellCount?: number
-  joyID?: JoyIDConfig
 }
 
 export interface RebaseMintXinsParams extends BaseParams {
@@ -93,7 +89,18 @@ export interface RebaseMintXinsParams extends BaseParams {
   inscriptionId: Byte32
   actualSupply: bigint
   cellCount?: number
-  joyID?: JoyIDConfig
+}
+
+export interface TransferXudtResult {
+  rawTx: CKBComponents.RawTransaction
+  packagedCkb: bigint
+  amount: bigint
+}
+
+export interface TransferXinsResult {
+  rawTx: CKBComponents.RawTransaction
+  packagedCkb: bigint
+  amount: bigint
 }
 
 export interface RebaseMintResult {
@@ -101,22 +108,40 @@ export interface RebaseMintResult {
   rebasedXudtType: CKBComponents.Script
 }
 
-export interface TransferParams extends BaseParams {
+export interface MergeXudtParams extends BaseParams {
+  xudtType: CKBComponents.Script
+  cellCount?: number
+}
+
+export interface DestroyXudtParams extends BaseParams {
+  xudtType: CKBComponents.Script
+  cellCount?: number
+}
+
+export interface DestroyXinsParams extends BaseParams {
+  xinsType: CKBComponents.Script
+  cellCount?: number
+}
+
+export interface TransferXudtParams extends BaseParams {
   xudtType: CKBComponents.Script
   toAddress: Address
+  transferAmount?: bigint
+}
+
+export interface TransferXinsParams extends BaseParams {
+  xinsType: CKBComponents.Script
+  toAddress: Address
   cellCount?: number
-  joyID?: JoyIDConfig
 }
 
 export interface TransferCKBParams extends BaseParams {
   toAddress: Address
   amount?: Capacity
-  joyID?: JoyIDConfig
 }
 
 export interface RebasedTransferParams extends BaseParams {
   rebasedXudtType: CKBComponents.Script
   toAddress: Address
   cellCount?: number
-  joyID?: JoyIDConfig
 }

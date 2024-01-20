@@ -10,7 +10,7 @@ import {
 } from '@nervosnetwork/ckb-sdk-utils'
 import BigNumber from 'bignumber.js'
 import { append0x, leToU128, remove0x, u128ToLe, u64ToLe, u8ToHex, utf8ToHex } from '../utils'
-import { Byte32, IndexerCell, InscriptionInfo, InscriptionXinsInfo } from '../types'
+import { Byte32, IndexerCell, InscriptionXudtInfo, InscriptionXinsInfo } from '../types'
 import {
   getXudtTypeScript,
   getInscriptionTypeScript,
@@ -28,7 +28,7 @@ export const generateInscriptionId = (firstInput: CKBComponents.CellInput, outpu
 }
 
 const FIXED_SIZE = 66
-export const calcInscriptionInfoSize = (info: InscriptionInfo | InscriptionXinsInfo) => {
+export const calcInscriptionInfoSize = (info: InscriptionXudtInfo | InscriptionXinsInfo) => {
   let size = FIXED_SIZE
   const name = remove0x(utf8ToHex(info.name))
   size += name.length / 2 + 1
@@ -37,7 +37,7 @@ export const calcInscriptionInfoSize = (info: InscriptionInfo | InscriptionXinsI
   return size
 }
 
-export const serializeInscriptionInfo = (info: InscriptionInfo) => {
+export const serializeInscriptionXudtInfo = (info: InscriptionXudtInfo) => {
   let ret = u8ToHex(info.decimal)
   const name = remove0x(utf8ToHex(info.name))
   ret = ret.concat(u8ToHex(name.length / 2) + name)
@@ -171,6 +171,15 @@ export const calcMintXudtWitness = (inscriptionInfoScript: CKBComponents.Script,
   return serializeWitnessArgs(emptyWitness)
 }
 
+export const calcMintXinsWitness = (inscriptionInfoScript: CKBComponents.Script, isMainnet: boolean) => {
+  const ownerScript = generateOwnerScript(inscriptionInfoScript, isMainnet)
+  const owner = remove0x(serializeScript(ownerScript))
+  // serialize mint XudtInputWitness
+  const witnessInputType = `0x6d00000014000000690000006900000069000000${owner}04000000`
+  const emptyWitness = { lock: '', inputType: '', outputType: witnessInputType }
+  return serializeWitnessArgs(emptyWitness)
+}
+
 export const calcRebasedXudtWitness = (
   inscriptionInfoScript: CKBComponents.Script,
   preXudtHash: Byte32,
@@ -178,6 +187,20 @@ export const calcRebasedXudtWitness = (
   isMainnet: boolean,
 ) => {
   const rebasedOwnerScript = calcRebasedXudtOwnerScript(inscriptionInfoScript, preXudtHash, actualSupply, isMainnet)
+  const owner = remove0x(serializeScript(rebasedOwnerScript))
+  // serialize rebased XudtInputWitness
+  const witnessInputType = `0x9d00000014000000990000009900000099000000${owner}04000000`
+  const emptyWitness = { lock: '', inputType: '', outputType: witnessInputType }
+  return serializeWitnessArgs(emptyWitness)
+}
+
+export const calcRebasedXinsWitness = (
+  inscriptionInfoScript: CKBComponents.Script,
+  preXinsHash: Byte32,
+  actualSupply: bigint,
+  isMainnet: boolean,
+) => {
+  const rebasedOwnerScript = calcRebasedXudtOwnerScript(inscriptionInfoScript, preXinsHash, actualSupply, isMainnet)
   const owner = remove0x(serializeScript(rebasedOwnerScript))
   // serialize rebased XudtInputWitness
   const witnessInputType = `0x9d00000014000000990000009900000099000000${owner}04000000`
@@ -205,4 +228,36 @@ export const calculateRebaseTxFee = (count: number, feeRate?: bigint) => {
   }
   const rate = feeRate ?? BaseFeeRate
   return calculateTransactionFee(rate, txSize)
+}
+
+export const calculateTransferCkbTxFee = (count: number, singleCkbCapacity: number, feeRate?: bigint) => {
+  let txSize = 1000
+  if (count > 1) {
+    txSize += (count - 1) * singleCkbCapacity
+  }
+  const rate = feeRate ?? BaseFeeRate
+  return calculateTransactionFee(rate, txSize)
+}
+
+export const calcMinChangeCapacity = (lock: CKBComponents.Script): bigint => {
+  const argsSize = hexToBytes(lock.args).length
+  const lockSize = 32 + 1 + argsSize
+  const capacitySize = 8
+  const minChangeCapacity = BigInt(lockSize + capacitySize) * BigInt(10000_0000)
+
+  return minChangeCapacity
+}
+
+// include lock, xudt type, capacity
+export const calcXudtCapacity = (lock: CKBComponents.Script, isReserve: boolean): bigint => {
+  const argsSize = hexToBytes(lock.args).length
+  const lockSize = 32 + 1 + argsSize
+  const xudtTypeSize = 32 + 32 + 1
+  const capacitySize = 8
+  const xudtDataSize = 16
+  let cellSize = lockSize + xudtTypeSize + capacitySize + xudtDataSize
+  if (isReserve) {
+    cellSize += 1
+  }
+  return BigInt(cellSize) * BigInt(10000_0000)
 }

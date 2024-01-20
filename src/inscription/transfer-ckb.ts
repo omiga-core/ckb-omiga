@@ -1,10 +1,12 @@
 import { addressToScript, serializeWitnessArgs } from '@nervosnetwork/ckb-sdk-utils'
 import { FEE, getJoyIDCellDep } from '../constants'
-import { TransferCKBParams } from '../types'
-import { calculateTransactionFee } from './helper'
+import { Hex, TransferCKBParams } from '../types'
+import { calcMinChangeCapacity, calculateTransactionFee, calculateTransferCkbTxFee } from './helper'
+import { CapacityNotEnoughException } from '../exceptions'
 
 export const buildTransferCKBTx = async ({
   collector,
+  cellDeps,
   joyID,
   address,
   toAddress,
@@ -13,45 +15,88 @@ export const buildTransferCKBTx = async ({
 }: TransferCKBParams): Promise<CKBComponents.RawTransaction> => {
   const txFee = feeRate ? calculateTransactionFee(feeRate) : FEE
   const isMainnet = address.startsWith('ckb')
+
   const fromLock = addressToScript(address)
+  const minChangeCapacity = calcMinChangeCapacity(fromLock)
+  const minChangeBytes = minChangeCapacity / BigInt(10000_0000)
+
+  const toLock = addressToScript(toAddress)
+
+  let inputs: CKBComponents.CellInput[] = []
+  let outputs: CKBComponents.CellOutput[] = []
+  let outputsData: Hex[] = []
+  cellDeps = [...cellDeps]
+  if (joyID) {
+    cellDeps.push(getJoyIDCellDep(isMainnet))
+  }
+  let totalInputCapacity = BigInt(0)
+
   const cells = await collector.getCells({ lock: fromLock })
-  if (cells == undefined || cells.length == 0) {
+  if (cells === undefined || cells.length === 0) {
     throw new Error('The from address has no live cells')
   }
 
   // transfer all ckb
-  if (amount == undefined) {
-    amount = BigInt(0)
-    cells.forEach(function (val, idx, arr) {
-      amount! += BigInt(val.output.capacity)
-    }, 0)
-    amount = amount - txFee
-  }
+  if (amount === undefined) {
+    const { inputs: feeInputs, capacity: inputCapacity } = collector.collectAllInputs(cells)
+    inputs = feeInputs
 
-  const { inputs, capacity: inputCapacity } = collector.collectInputs(cells, amount!, txFee)
+    amount = inputCapacity
 
-  const toLock = addressToScript(toAddress)
-  let outputs: CKBComponents.CellOutput[] = []
-  if (inputCapacity === amount + txFee) {
+    const actualTxFee = calculateTransferCkbTxFee(inputs.length, Number(minChangeBytes), feeRate)
     outputs.push({
-      capacity: `0x${amount.toString(16)}`,
+      capacity: `0x${(amount - actualTxFee).toString(16)}`,
       lock: toLock,
     })
+    outputsData.push('0x')
   } else {
-    const changeCapacity = inputCapacity - FEE - amount
-    outputs.push({
-      capacity: `0x${changeCapacity.toString(16)}`,
-      lock: fromLock,
-    })
+    const { inputs: feeInputs, capacity: inputCapacity } = collector.collectInputs(
+      cells,
+      amount,
+      minChangeCapacity,
+      txFee,
+    )
+
+    totalInputCapacity = inputCapacity
+    inputs.push(...feeInputs)
+
+    const actualTxFee = calculateTransferCkbTxFee(inputs.length, Number(minChangeBytes), feeRate)
+
+    let changeCapacity = totalInputCapacity - amount - actualTxFee
+
+    if (changeCapacity !== BigInt(0)) {
+      if (changeCapacity <= minChangeCapacity) {
+        const { inputs: feeInputs, capacity: inputCapacity } = collector.collectInputs(
+          cells,
+          amount!,
+          minChangeCapacity,
+          actualTxFee,
+        )
+        inputs = feeInputs
+        totalInputCapacity = inputCapacity
+
+        changeCapacity = totalInputCapacity - amount - actualTxFee
+
+        if (changeCapacity <= minChangeCapacity) {
+          throw new CapacityNotEnoughException(
+            `Capacity not enough for change, need ${(txFee + amount + minChangeCapacity).toString(10)}`,
+          )
+        }
+      }
+
+      const changeOutput: CKBComponents.CellOutput = {
+        capacity: `0x${changeCapacity.toString(16)}`,
+        lock: fromLock,
+      }
+      outputs.push(changeOutput)
+      outputsData.push('0x')
+    }
 
     outputs.push({
       capacity: `0x${amount.toString(16)}`,
       lock: toLock,
     })
-  }
-  const cellDeps: CKBComponents.CellDep[] = []
-  if (joyID) {
-    cellDeps.push(getJoyIDCellDep(isMainnet))
+    outputsData.push('0x')
   }
 
   const emptyWitness = { lock: '', inputType: '', outputType: '' }
@@ -61,7 +106,7 @@ export const buildTransferCKBTx = async ({
     headerDeps: [],
     inputs,
     outputs,
-    outputsData: outputs.map(_o => '0x'),
+    outputsData,
     witnesses: inputs.map((_, i) => (i > 0 ? '0x' : serializeWitnessArgs(emptyWitness))),
   }
 

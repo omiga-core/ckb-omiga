@@ -1,15 +1,17 @@
 import { Collector } from '../../src/collector'
-import { addressFromP256PrivateKey, keyFromP256Private } from '../../src/utils'
+import { addressFromP256PrivateKey, append0x, keyFromP256Private } from '../../src/utils'
 import { Aggregator } from '../../src/aggregator'
-import { buildXudtInfoRebaseTx, calcInscriptionXudtActualSupply } from '../../src/inscription'
+import { buildDestroyXudtTx, buildTransferXudtTx } from '../../src/inscription'
 import { ConnectResponseData } from '@joyid/ckb'
 import { signSecp256r1Tx } from './secp256r1'
-import { JoyIDConfig } from '../../src'
+import { InscriptionXudtInfo, JoyIDConfig, getInscriptionInfoTypeScript } from '../../src'
+import { AddressPrefix, scriptToHash } from '@nervosnetwork/ckb-sdk-utils'
+import { calcRebasedXudtType, calcXinsTypeScript, calcXudtTypeScript } from '../../src/inscription/helper'
 
 // SECP256R1 private key
 const TEST_MAIN_PRIVATE_KEY = '0x0000000000000000000000000000000000000000000000000000000000000003'
 
-const rebase = async () => {
+const destroy = async () => {
   const collector = new Collector({
     ckbNodeUrl: 'https://testnet.ckb.dev/rpc',
     ckbIndexerUrl: 'https://testnet.ckb.dev/indexer',
@@ -33,27 +35,33 @@ const rebase = async () => {
     connectData,
   }
 
-  // the inscriptionId and preXudtHash come from inscription deploy transaction
-  const inscriptionId = '0x8d170bed3935f9d23f3fa5a6c3b713ba296c32de366b29541fb65cec8491f218'
+  // the inscriptionId come from inscription deploy transaction
+  const inscriptionId = '0xe3eca1280df8643d6a567143e7bad012d394b53a6c4df3eded97d57f8b45f9c7'
 
-  // the actualSupply will be used in subsequent operations
-  const actualSupply = await calcInscriptionXudtActualSupply({ collector, inscriptionId, isMainnet: false })
+  // the actual supply comes from the inscription info-rebase transaction
+  const actualSupply = BigInt('700000000000')
 
-  console.log('actual supply', actualSupply.toString())
+  const inscriptionInfoType = {
+    ...getInscriptionInfoTypeScript(false),
+    args: append0x(inscriptionId),
+  }
+  const preXinsType = calcXinsTypeScript(inscriptionInfoType, false)
+  const preXinsHash = scriptToHash(preXinsType)
+  const rebasedXudtType = calcRebasedXudtType(inscriptionInfoType, preXinsHash, actualSupply, false)
 
-  const rawTx: CKBComponents.RawTransaction = await buildXudtInfoRebaseTx({
+  const rawTx = await buildDestroyXudtTx({
     collector,
     cellDeps: [],
     joyID,
     address,
-    actualSupply,
-    inscriptionId,
+    xudtType: rebasedXudtType,
   })
+
   const key = keyFromP256Private(TEST_MAIN_PRIVATE_KEY)
   const signedTx = signSecp256r1Tx(key, rawTx)
 
   let txHash = await collector.getCkb().rpc.sendTransaction(signedTx, 'passthrough')
-  console.info(`Inscription info has been rebased with tx hash ${txHash}`)
+  console.info(`Inscription has been destoryed with tx hash ${txHash}`)
 }
 
-rebase()
+destroy()

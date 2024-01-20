@@ -21,6 +21,12 @@ export interface CollectResult {
   capacity: Capacity
 }
 
+export interface CollectXudtResult {
+  inputs: CKBComponents.CellInput[]
+  amount: bigint
+  capacity: Capacity
+}
+
 export interface Service {
   collector: Collector
   aggregator: Aggregator

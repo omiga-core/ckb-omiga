@@ -1,7 +1,7 @@
 import { Collector } from '../../src/collector'
 import { addressFromP256PrivateKey, keyFromP256Private } from '../../src/utils'
 import { Aggregator } from '../../src/aggregator'
-import { buildXudtInfoRebaseTx, calcInscriptionXudtActualSupply } from '../../src/inscription'
+import { buildXinsInfoRebaseTx, calcInscriptionXinsActualSupply } from '../../src/inscription'
 import { ConnectResponseData } from '@joyid/ckb'
 import { signSecp256r1Tx } from './secp256r1'
 import { JoyIDConfig } from '../../src'
@@ -34,14 +34,14 @@ const rebase = async () => {
   }
 
   // the inscriptionId and preXudtHash come from inscription deploy transaction
-  const inscriptionId = '0x8d170bed3935f9d23f3fa5a6c3b713ba296c32de366b29541fb65cec8491f218'
+  const inscriptionId = '0xe3eca1280df8643d6a567143e7bad012d394b53a6c4df3eded97d57f8b45f9c7'
 
   // the actualSupply will be used in subsequent operations
-  const actualSupply = await calcInscriptionXudtActualSupply({ collector, inscriptionId, isMainnet: false })
+  const actualSupply = await calcInscriptionXinsActualSupply({ collector, inscriptionId, isMainnet: false })
 
   console.log('actual supply', actualSupply.toString())
 
-  const rawTx: CKBComponents.RawTransaction = await buildXudtInfoRebaseTx({
+  const rawTx: CKBComponents.RawTransaction = await buildXinsInfoRebaseTx({
     collector,
     cellDeps: [],
     joyID,

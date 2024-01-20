@@ -3,11 +3,11 @@ import { addressFromP256PrivateKey, keyFromP256Private } from '../../src/utils'
 import { Aggregator } from '../../src/aggregator'
 import { buildDeployTx } from '../../src/inscription'
 import { ConnectResponseData } from '@joyid/ckb'
-import { InscriptionInfo, JoyIDConfig } from '../../src'
+import { InscriptionXudtInfo, JoyIDConfig } from '../../src'
 import { signSecp256r1Tx } from './secp256r1'
 
 // SECP256R1 private key
-const TEST_MAIN_PRIVATE_KEY = '0x0000000000000000000000000000000000000000000000000000000000000001'
+const TEST_MAIN_PRIVATE_KEY = '0x0000000000000000000000000000000000000000000000000000000000000003'
 
 const deploy = async () => {
   const collector = new Collector({
@@ -33,7 +33,7 @@ const deploy = async () => {
     connectData,
   }
 
-  const info: InscriptionInfo = {
+  const info: InscriptionXudtInfo = {
     maxSupply: BigInt(2100_0000),
     mintLimit: BigInt(1000),
     xudtHash: '',
@@ -43,7 +43,7 @@ const deploy = async () => {
     symbol: 'CKBI',
   }
 
-  const { rawTx, inscriptionId, xudtHash } = await buildDeployTx({ collector, joyID, address, info })
+  const { rawTx, inscriptionId, xudtHash } = await buildDeployTx({ collector, cellDeps: [], joyID, address, info })
 
   // the inscriptionId and xudtHash will be used in subsequent operations
   console.log('inscription id: ', inscriptionId)

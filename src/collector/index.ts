@@ -1,9 +1,10 @@
 import axios from 'axios'
 import CKB from '@nervosnetwork/ckb-sdk-core'
 import { toCamelcase } from '../utils/case-parser'
-import { IndexerCell, CollectResult, IndexerCapacity } from '../types/collector'
+import { IndexerCell, CollectResult, IndexerCapacity, CollectXudtResult } from '../types/collector'
 import { MIN_CAPACITY } from '../constants'
-import { CapacityNotEnoughException, IndexerException } from '../exceptions'
+import { CapacityNotEnoughException, IndexerException, XudtNotEnoughException } from '../exceptions'
+import { leToU128 } from '../utils'
 
 export class Collector {
   private ckbNodeUrl: string
@@ -122,7 +123,7 @@ export class Collector {
     }
   }
 
-  collectInputs(liveCells: IndexerCell[], needCapacity: bigint, fee: bigint): CollectResult {
+  collectInputs(liveCells: IndexerCell[], needCapacity: bigint, minCapacity: bigint, fee: bigint): CollectResult {
     let inputs: CKBComponents.CellInput[] = []
     let sum = BigInt(0)
     for (let cell of liveCells) {
@@ -134,17 +135,79 @@ export class Collector {
         since: '0x0',
       })
       sum = sum + BigInt(cell.output.capacity)
-      if (sum >= needCapacity + MIN_CAPACITY + fee) {
+      if (sum >= needCapacity + minCapacity + fee) {
         break
       }
     }
-    if (sum < needCapacity + fee) {
-      throw new CapacityNotEnoughException('Capacity not enough')
-    }
-    if (sum < needCapacity + MIN_CAPACITY + fee && sum != needCapacity + fee) {
-      throw new CapacityNotEnoughException('Capacity not enough for change')
+
+    if (sum < needCapacity + minCapacity + fee && sum != needCapacity + fee) {
+      throw new CapacityNotEnoughException(
+        `Capacity not enough for change, need ${(needCapacity + minCapacity + fee).toString(10)}`,
+      )
     }
     return { inputs, capacity: sum }
+  }
+
+  collectAllInputs(liveCells: IndexerCell[]): CollectResult {
+    let inputs: CKBComponents.CellInput[] = []
+    let sum = BigInt(0)
+    for (let cell of liveCells) {
+      inputs.push({
+        previousOutput: {
+          txHash: cell.outPoint.txHash,
+          index: cell.outPoint.index,
+        },
+        since: '0x0',
+      })
+      sum = sum + BigInt(cell.output.capacity)
+    }
+
+    return { inputs, capacity: sum }
+  }
+
+  collectXudtInputs(liveCells: IndexerCell[], needAmount: bigint): CollectXudtResult {
+    let inputs: CKBComponents.CellInput[] = []
+    let totoalAmount = BigInt(0)
+    let totoalCapacity = BigInt(0)
+    for (let cell of liveCells) {
+      inputs.push({
+        previousOutput: {
+          txHash: cell.outPoint.txHash,
+          index: cell.outPoint.index,
+        },
+        since: '0x0',
+      })
+      totoalAmount = totoalAmount + leToU128(cell.outputData)
+      totoalCapacity = totoalCapacity + BigInt(cell.output.capacity)
+      if (totoalAmount >= needAmount) {
+        break
+      }
+    }
+
+    if (totoalAmount < needAmount) {
+      throw new XudtNotEnoughException(`Xudt not enough, need ${needAmount}, got ${totoalAmount}`)
+    }
+
+    return { inputs, capacity: totoalCapacity, amount: totoalAmount }
+  }
+
+  collectAllXudtInputs(liveCells: IndexerCell[]): CollectXudtResult {
+    let inputs: CKBComponents.CellInput[] = []
+    let totoalAmount = BigInt(0)
+    let totoalCapacity = BigInt(0)
+    for (let cell of liveCells) {
+      inputs.push({
+        previousOutput: {
+          txHash: cell.outPoint.txHash,
+          index: cell.outPoint.index,
+        },
+        since: '0x0',
+      })
+      totoalAmount = totoalAmount + leToU128(cell.outputData)
+      totoalCapacity = totoalCapacity + BigInt(cell.output.capacity)
+    }
+
+    return { inputs, capacity: totoalCapacity, amount: totoalAmount }
   }
 
   async getLiveCell(outPoint: CKBComponents.OutPoint): Promise<CKBComponents.LiveCell> {

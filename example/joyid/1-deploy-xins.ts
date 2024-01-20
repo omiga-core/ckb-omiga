@@ -1,15 +1,15 @@
 import { Collector } from '../../src/collector'
 import { addressFromP256PrivateKey, keyFromP256Private } from '../../src/utils'
 import { Aggregator } from '../../src/aggregator'
-import { buildXudtInfoRebaseTx, calcInscriptionXudtActualSupply } from '../../src/inscription'
+import { buildDeployXinsTx } from '../../src/inscription'
 import { ConnectResponseData } from '@joyid/ckb'
+import { InscriptionXinsInfo, JoyIDConfig } from '../../src'
 import { signSecp256r1Tx } from './secp256r1'
-import { JoyIDConfig } from '../../src'
 
 // SECP256R1 private key
 const TEST_MAIN_PRIVATE_KEY = '0x0000000000000000000000000000000000000000000000000000000000000003'
 
-const rebase = async () => {
+const deploy = async () => {
   const collector = new Collector({
     ckbNodeUrl: 'https://testnet.ckb.dev/rpc',
     ckbIndexerUrl: 'https://testnet.ckb.dev/indexer',
@@ -33,27 +33,27 @@ const rebase = async () => {
     connectData,
   }
 
-  // the inscriptionId and preXudtHash come from inscription deploy transaction
-  const inscriptionId = '0x8d170bed3935f9d23f3fa5a6c3b713ba296c32de366b29541fb65cec8491f218'
+  const info: InscriptionXinsInfo = {
+    maxSupply: BigInt(2100_0000),
+    mintLimit: BigInt(1000),
+    xinsHash: '',
+    mintStatus: 0,
+    decimal: 8,
+    name: 'CKB Fist Inscription',
+    symbol: 'CKBI',
+  }
 
-  // the actualSupply will be used in subsequent operations
-  const actualSupply = await calcInscriptionXudtActualSupply({ collector, inscriptionId, isMainnet: false })
+  const { rawTx, inscriptionId, xinsHash } = await buildDeployXinsTx({ collector, cellDeps: [], joyID, address, info })
 
-  console.log('actual supply', actualSupply.toString())
+  // the inscriptionId and xudtHash will be used in subsequent operations
+  console.log('inscription id: ', inscriptionId)
+  console.log('unrebased xins hash: ', xinsHash)
 
-  const rawTx: CKBComponents.RawTransaction = await buildXudtInfoRebaseTx({
-    collector,
-    cellDeps: [],
-    joyID,
-    address,
-    actualSupply,
-    inscriptionId,
-  })
   const key = keyFromP256Private(TEST_MAIN_PRIVATE_KEY)
   const signedTx = signSecp256r1Tx(key, rawTx)
 
   let txHash = await collector.getCkb().rpc.sendTransaction(signedTx, 'passthrough')
-  console.info(`Inscription info has been rebased with tx hash ${txHash}`)
+  console.info(`Inscription has been deployed with tx hash ${txHash}`)
 }
 
-rebase()
+deploy()

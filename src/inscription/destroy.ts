@@ -5,37 +5,25 @@ import {
   serializeScript,
   serializeWitnessArgs,
 } from '@nervosnetwork/ckb-sdk-utils'
-import { FEE, getJoyIDCellDep, getCotaTypeScript, getXudtDep, getXinsDep } from '../constants'
-import {
-  Hex,
-  SubkeyUnlockReq,
-  TransferXudtParams,
-  TransferXinsParams,
-  TransferXudtResult,
-  TransferXinsResult,
-} from '../types'
-import { calcMinChangeCapacity, calcXudtCapacity, calculateTransactionFee } from './helper'
-import { append0x, u128ToLe } from '../utils'
+import { getJoyIDCellDep, getCotaTypeScript, getXudtDep, getXinsDep } from '../constants'
+import { DestroyXinsParams, DestroyXudtParams, Hex, MergeXudtParams, SubkeyUnlockReq } from '../types'
+import { calcMinChangeCapacity, calculateTransactionFee } from './helper'
+import { append0x } from '../utils'
 import { InscriptionXudtException, NoCotaCellException, NoLiveCellException } from '../exceptions'
 
-export const buildTransferXudtTx = async ({
+export const buildDestroyXudtTx = async ({
   collector,
   cellDeps,
   joyID,
   address,
   xudtType,
-  transferAmount,
-  toAddress,
   feeRate,
-}: TransferXudtParams): Promise<TransferXudtResult> => {
+  cellCount,
+}: DestroyXudtParams): Promise<CKBComponents.RawTransaction> => {
   const isMainnet = address.startsWith('ckb')
-
   const fromLock = addressToScript(address)
-  const fromXudtCapacity = calcXudtCapacity(fromLock, false)
-  const minChangeCapacity = calcMinChangeCapacity(fromLock)
 
-  const toLock = addressToScript(toAddress)
-  const toXudtCapacity = calcXudtCapacity(toLock, false)
+  const minChangeCapacity = calcMinChangeCapacity(fromLock)
 
   let inputs: CKBComponents.CellInput[] = []
   let outputs: CKBComponents.CellOutput[] = []
@@ -53,51 +41,24 @@ export const buildTransferXudtTx = async ({
     throw new InscriptionXudtException('The address has no xudt cells')
   }
 
-  let totalXudtInputs: CKBComponents.CellInput[] = []
-  let totalXudtAmount: bigint = BigInt(0)
-  let totalXudtCapacity: bigint = BigInt(0)
-  if (transferAmount != undefined) {
-    let {
-      inputs: xudtInputs,
-      amount: xudtAmount,
-      capacity: xudtCapacity,
-    } = collector.collectXudtInputs(xudtCells, transferAmount)
-    totalXudtInputs = [...xudtInputs]
-    totalXudtAmount = xudtAmount
-    totalXudtCapacity = xudtCapacity
-  } else {
-    let { inputs: xudtInputs, amount: xudtAmount, capacity: xudtCapacity } = collector.collectAllXudtInputs(xudtCells)
-    totalXudtInputs = [...xudtInputs]
-    totalXudtAmount = xudtAmount
-    totalXudtCapacity = xudtCapacity
-    transferAmount = totalXudtAmount
-  }
+  let {
+    inputs: xudtInputs,
+    amount: _xudtAmount,
+    capacity: xudtCapacity,
+  } = collector.collectAllXudtInputs(xudtCells.slice(0, cellCount))
 
-  inputs.push(...totalXudtInputs)
+  inputs.push(...xudtInputs)
 
-  let totalInputCapacity = totalXudtCapacity
+  let totalInputCapacity = xudtCapacity
+
   let totalOutputCapacity = BigInt(0)
 
-  if (totalXudtAmount > transferAmount) {
-    let output: CKBComponents.CellOutput = {
-      ...xudtCells[0].output,
-    }
-    output.capacity = `0x${fromXudtCapacity.toString(16)}`
-    outputs.push(output)
-
-    outputsData.push(append0x(u128ToLe(totalXudtAmount - transferAmount)))
-    totalOutputCapacity += fromXudtCapacity
+  const changeOutput: CKBComponents.CellOutput = {
+    capacity: `0x00`,
+    lock: fromLock,
   }
-
-  let output: CKBComponents.CellOutput = {
-    ...xudtCells[0].output,
-    lock: toLock,
-  }
-  let packagedCkb = toXudtCapacity
-  output.capacity = `0x${toXudtCapacity.toString(16)}`
-  outputs.push(output)
-  outputsData.push(append0x(u128ToLe(transferAmount)))
-  totalOutputCapacity += toXudtCapacity
+  outputs.push(changeOutput)
+  outputsData.push('0x')
 
   const emptyWitness = { lock: '', inputType: '', outputType: '' }
   let witnesses = [serializeWitnessArgs(emptyWitness)]
@@ -142,32 +103,12 @@ export const buildTransferXudtTx = async ({
   let serializedTx = serializeRawTransaction(rawTx)
   let txSize = serializedTx.length + 200
   let txFee = calculateTransactionFee(feeRate ? feeRate : BigInt(1500), txSize)
-  if (totalInputCapacity === totalOutputCapacity + txFee) {
-    return { rawTx, packagedCkb, amount: transferAmount }
-  }
-
-  if (
-    totalInputCapacity > totalOutputCapacity + txFee &&
-    totalInputCapacity < totalOutputCapacity + txFee + BigInt(1)
-  ) {
-    let remainCapacity = totalInputCapacity - totalOutputCapacity - txFee
-    rawTx.outputs[0].capacity = `0x${(BigInt(rawTx.outputs[0].capacity) + remainCapacity).toString(16)}`
-    if (rawTx.outputs[0].lock === toLock) {
-      packagedCkb += remainCapacity
-    }
-  }
 
   if (totalInputCapacity >= totalOutputCapacity + txFee + minChangeCapacity) {
     const changeCapacity = totalInputCapacity - (totalOutputCapacity + txFee)
-    let changeOutput: CKBComponents.CellOutput = {
-      capacity: `0x${changeCapacity.toString(16)}`,
-      lock: fromLock,
-    }
+    rawTx.outputs[0].capacity = `0x${changeCapacity.toString(16)}`
 
-    rawTx.outputs = [changeOutput, ...outputs]
-    rawTx.outputsData = ['0x', ...outputsData]
-
-    return { rawTx, packagedCkb, amount: transferAmount }
+    return rawTx
   }
 
   const needCapacity = totalOutputCapacity + txFee - totalInputCapacity
@@ -185,36 +126,24 @@ export const buildTransferXudtTx = async ({
   totalInputCapacity += feeInputCapacity
 
   const changeCapacity = totalInputCapacity - (totalOutputCapacity + txFee)
+  rawTx.outputs[0].capacity = `0x${changeCapacity.toString(16)}`
 
-  totalOutputCapacity += changeCapacity
-
-  let changeOutput: CKBComponents.CellOutput = {
-    capacity: `0x${changeCapacity.toString(16)}`,
-    lock: fromLock,
-  }
-
-  rawTx.outputs = [changeOutput, ...outputs]
-  rawTx.outputsData = ['0x', ...outputsData]
-
-  return { rawTx, packagedCkb, amount: transferAmount }
+  return rawTx
 }
 
-export const buildTransferXinsTx = async ({
+export const buildDestroyXinsTx = async ({
   collector,
   cellDeps,
   joyID,
   address,
   xinsType,
-  cellCount,
-  toAddress,
   feeRate,
-}: TransferXinsParams): Promise<TransferXinsResult> => {
+  cellCount,
+}: DestroyXinsParams): Promise<CKBComponents.RawTransaction> => {
   const isMainnet = address.startsWith('ckb')
   const fromLock = addressToScript(address)
-  const minChangeCapacity = calcMinChangeCapacity(fromLock)
 
-  const toLock = addressToScript(toAddress)
-  const toXinsCapacity = calcXudtCapacity(toLock, false)
+  const minChangeCapacity = calcMinChangeCapacity(fromLock)
 
   let inputs: CKBComponents.CellInput[] = []
   let outputs: CKBComponents.CellOutput[] = []
@@ -223,10 +152,6 @@ export const buildTransferXinsTx = async ({
   if (joyID) {
     cellDeps.push(getJoyIDCellDep(isMainnet))
   }
-
-  let totalInputCapacity = BigInt(0)
-  let totalOutputCapacity = BigInt(0)
-  let packagedCkb = BigInt(0)
 
   const xinsCells = await collector.getCells({
     lock: fromLock,
@@ -237,29 +162,23 @@ export const buildTransferXinsTx = async ({
   }
 
   let {
-    inputs: xinsInputs,
-    capacity: xinsInputsCapacity,
-    amount: xinsInputsAmount,
-  } = collector.collectAllXudtInputs(xinsCells.slice(cellCount))
-  inputs.push(...xinsInputs)
+    inputs: xudtInputs,
+    amount: _xudtAmount,
+    capacity: xudtCapacity,
+  } = collector.collectAllXudtInputs(xinsCells.slice(0, cellCount))
 
-  totalInputCapacity = xinsInputsCapacity
+  inputs.push(...xudtInputs)
 
-  const count = xinsInputs.length
-  for (let index = 0; index < count; index++) {
-    let output: CKBComponents.CellOutput = {
-      ...xinsCells[0].output,
-      lock: toLock,
-    }
-    output.capacity = `0x${toXinsCapacity.toString(16)}`
-    outputs.push(output)
-    outputsData.push(xinsCells[index].outputData)
-    packagedCkb += toXinsCapacity
+  let totalInputCapacity = xudtCapacity
+
+  let totalOutputCapacity = BigInt(0)
+
+  const changeOutput: CKBComponents.CellOutput = {
+    capacity: `0x00`,
+    lock: fromLock,
   }
-
-  outputs.forEach((value, index) => {
-    totalOutputCapacity += BigInt(value.capacity)
-  })
+  outputs.push(changeOutput)
+  outputsData.push('0x')
 
   const emptyWitness = { lock: '', inputType: '', outputType: '' }
   let witnesses = [serializeWitnessArgs(emptyWitness)]
@@ -290,6 +209,7 @@ export const buildTransferXinsTx = async ({
     }
     cellDeps = [cotaCellDep, ...cellDeps]
   }
+
   const rawTx: CKBComponents.RawTransaction = {
     version: '0x0',
     cellDeps,
@@ -303,32 +223,12 @@ export const buildTransferXinsTx = async ({
   let serializedTx = serializeRawTransaction(rawTx)
   let txSize = serializedTx.length + 200
   let txFee = calculateTransactionFee(feeRate ? feeRate : BigInt(1500), txSize)
-  if (totalInputCapacity === totalOutputCapacity + txFee) {
-    return { rawTx, packagedCkb, amount: xinsInputsAmount }
-  }
-
-  if (
-    totalInputCapacity > totalOutputCapacity + txFee &&
-    totalInputCapacity < totalOutputCapacity + txFee + BigInt(1)
-  ) {
-    let remainCapacity = totalInputCapacity - totalOutputCapacity - txFee
-    rawTx.outputs[0].capacity = `0x${(BigInt(rawTx.outputs[0].capacity) + remainCapacity).toString(16)}`
-    if (rawTx.outputs[0].lock === toLock) {
-      packagedCkb += remainCapacity
-    }
-  }
 
   if (totalInputCapacity >= totalOutputCapacity + txFee + minChangeCapacity) {
     const changeCapacity = totalInputCapacity - (totalOutputCapacity + txFee)
-    let changeOutput: CKBComponents.CellOutput = {
-      capacity: `0x${changeCapacity.toString(16)}`,
-      lock: fromLock,
-    }
+    rawTx.outputs[0].capacity = `0x${changeCapacity.toString(16)}`
 
-    rawTx.outputs = [changeOutput, ...outputs]
-    rawTx.outputsData = ['0x', ...outputsData]
-
-    return { rawTx, packagedCkb, amount: xinsInputsAmount }
+    return rawTx
   }
 
   const needCapacity = totalOutputCapacity + txFee - totalInputCapacity
@@ -346,13 +246,7 @@ export const buildTransferXinsTx = async ({
   totalInputCapacity += feeInputCapacity
 
   const changeCapacity = totalInputCapacity - (totalOutputCapacity + txFee)
-  let changeOutput: CKBComponents.CellOutput = {
-    capacity: `0x${changeCapacity.toString(16)}`,
-    lock: fromLock,
-  }
+  rawTx.outputs[0].capacity = `0x${changeCapacity.toString(16)}`
 
-  rawTx.outputs = [changeOutput, ...outputs]
-  rawTx.outputsData = ['0x', ...outputsData]
-
-  return { rawTx, packagedCkb, amount: xinsInputsAmount }
+  return rawTx
 }

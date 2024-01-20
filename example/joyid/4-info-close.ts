@@ -7,7 +7,7 @@ import { signSecp256r1Tx } from './secp256r1'
 import { JoyIDConfig } from '../../src'
 
 // SECP256R1 private key
-const TEST_MAIN_PRIVATE_KEY = '0x0000000000000000000000000000000000000000000000000000000000000001'
+const TEST_MAIN_PRIVATE_KEY = '0x0000000000000000000000000000000000000000000000000000000000000003'
 
 const close = async () => {
   const collector = new Collector({
@@ -34,10 +34,11 @@ const close = async () => {
   }
 
   // the inscriptionId come from inscription deploy transaction
-  const inscriptionId = '0xcd89d8f36593a9a82501c024c5cdc4877ca11c5b3d5831b3e78334aecb978f0d'
+  const inscriptionId = '0x8d170bed3935f9d23f3fa5a6c3b713ba296c32de366b29541fb65cec8491f218'
 
   const rawTx: CKBComponents.RawTransaction = await buildCloseTx({
     collector,
+    cellDeps: [],
     joyID,
     address,
     inscriptionId,

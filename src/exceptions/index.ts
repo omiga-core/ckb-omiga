@@ -4,6 +4,12 @@ export class CapacityNotEnoughException extends Error {
   }
 }
 
+export class XudtNotEnoughException extends Error {
+  constructor(message: string) {
+    super(message)
+  }
+}
+
 export class IndexerException extends Error {
   constructor(message: string) {
     super(message)

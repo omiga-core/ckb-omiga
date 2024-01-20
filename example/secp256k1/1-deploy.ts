@@ -1,11 +1,11 @@
 import { Collector } from '../../src/collector'
 import { buildDeployTx } from '../../src/inscription'
-import { InscriptionInfo } from '../../src'
+import { InscriptionXudtInfo } from '../../src'
 import { AddressPrefix } from '@nervosnetwork/ckb-sdk-utils'
 import { blockchain } from '@ckb-lumos/base'
 
 // SECP256K1 private key
-const TEST_MAIN_PRIVATE_KEY = '0x0000000000000000000000000000000000000000000000000000000000000001'
+const TEST_MAIN_PRIVATE_KEY = '0x0000000000000000000000000000000000000000000000000000000000000002'
 
 const deploy = async () => {
   const collector = new Collector({
@@ -15,7 +15,7 @@ const deploy = async () => {
   const address = collector.getCkb().utils.privateKeyToAddress(TEST_MAIN_PRIVATE_KEY, { prefix: AddressPrefix.Testnet })
   console.log('address: ', address)
 
-  const info: InscriptionInfo = {
+  const info: InscriptionXudtInfo = {
     maxSupply: BigInt(2100_0000),
     mintLimit: BigInt(1000),
     xudtHash: '',
@@ -25,9 +25,6 @@ const deploy = async () => {
     symbol: 'CKBI',
   }
 
-  const { rawTx, inscriptionId } = await buildDeployTx({ collector, address, info })
-  console.log('inscription id: ', inscriptionId)
-
   const secp256k1Dep: CKBComponents.CellDep = {
     outPoint: {
       txHash: '0xf8de3bb47d055cdf460d93a2a6e1b05f7432f9777c8c474abf4eec1d4aee5d37',
@@ -35,10 +32,13 @@ const deploy = async () => {
     },
     depType: 'depGroup',
   }
+
+  const { rawTx, inscriptionId } = await buildDeployTx({ collector, cellDeps: [secp256k1Dep], address, info })
+  console.log('inscription id: ', inscriptionId)
+
   const witnessArgs = blockchain.WitnessArgs.unpack(rawTx.witnesses[0]) as CKBComponents.WitnessArgs
   let unsignedTx: CKBComponents.RawTransactionToSign = {
     ...rawTx,
-    cellDeps: [...rawTx.cellDeps, secp256k1Dep],
     witnesses: [witnessArgs, ...rawTx.witnesses.slice(1)],
   }
   const signedTx = collector.getCkb().signTransaction(TEST_MAIN_PRIVATE_KEY)(unsignedTx)

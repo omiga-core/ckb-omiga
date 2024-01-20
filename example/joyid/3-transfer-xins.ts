@@ -1,15 +1,17 @@
 import { Collector } from '../../src/collector'
-import { addressFromP256PrivateKey, keyFromP256Private } from '../../src/utils'
+import { addressFromP256PrivateKey, append0x, keyFromP256Private } from '../../src/utils'
 import { Aggregator } from '../../src/aggregator'
-import { buildMintXudtTx } from '../../src/inscription'
+import { buildTransferXinsTx, buildTransferXudtTx } from '../../src/inscription'
 import { ConnectResponseData } from '@joyid/ckb'
 import { signSecp256r1Tx } from './secp256r1'
-import { InscriptionXudtInfo, JoyIDConfig } from '../../src'
+import { JoyIDConfig, getInscriptionInfoTypeScript } from '../../src'
+import { AddressPrefix, scriptToHash } from '@nervosnetwork/ckb-sdk-utils'
+import { calcXinsTypeScript, calcXudtTypeScript } from '../../src/inscription/helper'
 
 // SECP256R1 private key
 const TEST_MAIN_PRIVATE_KEY = '0x0000000000000000000000000000000000000000000000000000000000000003'
 
-const mint = async () => {
+const transfer = async () => {
   const collector = new Collector({
     ckbNodeUrl: 'https://testnet.ckb.dev/rpc',
     ckbIndexerUrl: 'https://testnet.ckb.dev/indexer',
@@ -34,32 +36,38 @@ const mint = async () => {
   }
 
   // the inscriptionId come from inscription deploy transaction
-  const inscriptionId = '0x8d170bed3935f9d23f3fa5a6c3b713ba296c32de366b29541fb65cec8491f218'
+  const inscriptionId = '0xe3eca1280df8643d6a567143e7bad012d394b53a6c4df3eded97d57f8b45f9c7'
 
-  const info: InscriptionXudtInfo = {
-    maxSupply: BigInt(2100_0000),
-    mintLimit: BigInt(1000),
-    xudtHash: '',
-    mintStatus: 0,
-    decimal: 8,
-    name: 'CKB Fist Inscription',
-    symbol: 'CKBI',
+  const inscriptionInfoType = {
+    ...getInscriptionInfoTypeScript(false),
+    args: append0x(inscriptionId),
   }
+  const preXinsType = calcXinsTypeScript(inscriptionInfoType, false)
 
-  const mintLimit = info.mintLimit * BigInt(10 ** info.decimal)
-  const rawTx: CKBComponents.RawTransaction = await buildMintXudtTx({
+  const receiverPrivateKey = '0x0000000000000000000000000000000000000000000000000000000000000002'
+  const toAddress = collector.getCkb().utils.privateKeyToAddress(receiverPrivateKey, { prefix: AddressPrefix.Testnet })
+
+  console.log('toAddress:', toAddress)
+  const {
+    rawTx,
+    packagedCkb,
+    amount: transferAmount,
+  } = await buildTransferXinsTx({
     collector,
     cellDeps: [],
     joyID,
     address,
-    inscriptionId,
-    mintLimit,
+    xinsType: preXinsType,
+    toAddress,
   })
+
+  console.log('packageCkb: ', packagedCkb)
+  console.log('transferAmount: ', transferAmount)
   const key = keyFromP256Private(TEST_MAIN_PRIVATE_KEY)
   const signedTx = signSecp256r1Tx(key, rawTx)
 
   let txHash = await collector.getCkb().rpc.sendTransaction(signedTx, 'passthrough')
-  console.info(`Inscription has been minted with tx hash ${txHash}`)
+  console.info(`Inscription has been transferred with tx hash ${txHash}`)
 }
 
-mint()
+transfer()

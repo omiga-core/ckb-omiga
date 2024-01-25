@@ -97,6 +97,17 @@ export interface TransferXudtResult {
   amount: bigint
 }
 
+export interface MergeXudtResult {
+  rawTx: CKBComponents.RawTransaction
+  freedCkb: bigint
+  remain: boolean
+}
+
+export interface EstimateMergeXudtResult {
+  freedCkb: bigint
+  remain: boolean
+}
+
 export interface TransferXinsResult {
   rawTx: CKBComponents.RawTransaction
   packagedCkb: bigint

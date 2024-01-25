@@ -6,10 +6,11 @@ import {
   serializeWitnessArgs,
 } from '@nervosnetwork/ckb-sdk-utils'
 import { FEE, getJoyIDCellDep, getCotaTypeScript, getXudtDep } from '../constants'
-import { Hex, MergeXudtParams, SubkeyUnlockReq } from '../types'
+import { EstimateMergeXudtResult, Hex, MergeXudtParams, MergeXudtResult, SubkeyUnlockReq } from '../types'
 import { calcMinChangeCapacity, calcXudtCapacity, calculateTransactionFee } from './helper'
 import { append0x, u128ToLe } from '../utils'
 import { InscriptionXudtException, NoCotaCellException, NoLiveCellException } from '../exceptions'
+import { Collector } from '../collector'
 
 export const buildMergeXudtTx = async ({
   collector,
@@ -19,13 +20,15 @@ export const buildMergeXudtTx = async ({
   xudtType,
   feeRate,
   cellCount,
-}: MergeXudtParams): Promise<CKBComponents.RawTransaction> => {
+}: MergeXudtParams): Promise<MergeXudtResult> => {
   const isMainnet = address.startsWith('ckb')
   const fromLock = addressToScript(address)
 
   const fromXudtCapacity = calcXudtCapacity(fromLock, false)
   const minChangeCapacity = calcMinChangeCapacity(fromLock)
 
+  let freedCkb = BigInt(0)
+  let remain = false
   let inputs: CKBComponents.CellInput[] = []
   let outputs: CKBComponents.CellOutput[] = []
   let outputsData: Hex[] = []
@@ -39,19 +42,23 @@ export const buildMergeXudtTx = async ({
     throw new InscriptionXudtException('The address has no xudt cells')
   }
 
-  let {
+  if (cellCount != undefined) {
+    if (xudtCells.length > cellCount) {
+      remain = true
+    }
+  }
+
+  const {
     inputs: xudtInputs,
-    amount: xudtAmount,
-    capacity: xudtCapacity,
+    amount: totalXudtAmount,
+    capacity: totalXudtCapacity,
   } = collector.collectAllXudtInputs(xudtCells.slice(0, cellCount))
 
   inputs.push(...xudtInputs)
 
-  const totalXudtAmount = xudtAmount
-  const totalXudtCapacity = xudtCapacity
-
   let inputCapacity = totalXudtCapacity
   let outputCapacity = fromXudtCapacity
+  freedCkb = inputCapacity - outputCapacity
 
   let output: CKBComponents.CellOutput = {
     ...xudtCells[0].output,
@@ -110,7 +117,7 @@ export const buildMergeXudtTx = async ({
   let txFee = calculateTransactionFee(feeRate ? feeRate : BigInt(1500), txSize)
 
   if (inputCapacity === outputCapacity + txFee) {
-    return rawTx
+    return { rawTx, freedCkb, remain }
   }
 
   if (inputCapacity >= outputCapacity + txFee + minChangeCapacity) {
@@ -123,7 +130,7 @@ export const buildMergeXudtTx = async ({
     rawTx.outputs = [changeOutput, ...outputs]
     rawTx.outputsData = ['0x', ...outputsData]
 
-    return rawTx
+    return { rawTx, freedCkb, remain }
   }
 
   const needCapacity = outputCapacity + txFee - inputCapacity
@@ -149,5 +156,40 @@ export const buildMergeXudtTx = async ({
   rawTx.outputs = [changeOutput, ...outputs]
   rawTx.outputsData = ['0x', ...outputsData]
 
-  return rawTx
+  return { rawTx, freedCkb, remain }
+}
+
+export const estimateMergeXudtTx = async (
+  collector: Collector,
+  address: string,
+  xudtType: CKBComponents.Script,
+  cellCount: number,
+): Promise<EstimateMergeXudtResult> => {
+  const fromLock = addressToScript(address)
+  const fromXudtCapacity = calcXudtCapacity(fromLock, false)
+
+  let freedCkb = BigInt(0)
+  let remain = false
+
+  const xudtCells = await collector.getCells({
+    lock: fromLock,
+    type: xudtType,
+  })
+  if (!xudtCells || xudtCells.length === 0) {
+    throw new InscriptionXudtException('The address has no xudt cells')
+  }
+
+  if (cellCount != undefined) {
+    if (xudtCells.length > cellCount) {
+      remain = true
+    }
+  }
+
+  const { capacity: totalXudtCapacity } = collector.collectAllXudtInputs(xudtCells.slice(0, cellCount))
+
+  let inputCapacity = totalXudtCapacity
+  let outputCapacity = fromXudtCapacity
+  freedCkb = inputCapacity - outputCapacity
+
+  return { freedCkb, remain }
 }

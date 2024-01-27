@@ -128,6 +128,8 @@ export interface MergeXudtResult {
   rawTx: CKBComponents.RawTransaction
   txFee: bigint
   freedCkb: bigint
+  amount: bigint
+  cellCount: number
   remain: boolean
 }
 
@@ -140,6 +142,7 @@ export interface DestroyXudtResult {
   rawTx: CKBComponents.RawTransaction
   txFee: bigint
   freedCkb: bigint
+  cellCount: number
   destroyedAmount: bigint
 }
 
@@ -152,6 +155,7 @@ export interface DestroyXinsResult {
   rawTx: CKBComponents.RawTransaction
   txFee: bigint
   freedCkb: bigint
+  cellCount: number
   destroyedAmount: bigint
 }
 
@@ -161,17 +165,17 @@ export interface TransferXudtParams extends BaseParams {
   transferAmount?: bigint
 }
 
-export interface TransferXinsParams extends BaseParams {
-  xinsType: CKBComponents.Script
-  toAddress: Address
-  cellCount?: number
-}
-
 export interface TransferXudtResult {
   rawTx: CKBComponents.RawTransaction
   txFee: bigint
   packagedCkb: bigint
   amount: bigint
+}
+
+export interface TransferXinsParams extends BaseParams {
+  xinsType: CKBComponents.Script
+  toAddress: Address
+  cellCount?: number
 }
 
 export interface TransferXinsResult {

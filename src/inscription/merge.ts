@@ -5,7 +5,7 @@ import {
   serializeScript,
   serializeWitnessArgs,
 } from '@nervosnetwork/ckb-sdk-utils'
-import { FEE, getJoyIDCellDep, getCotaTypeScript, getXudtDep } from '../constants'
+import { getJoyIDCellDep, getCotaTypeScript, getXudtDep } from '../constants'
 import { EstimateMergeXudtResult, Hex, MergeXudtParams, MergeXudtResult, SubkeyUnlockReq } from '../types'
 import { calcMinChangeCapacity, calcXudtCapacity, calculateTransactionFee } from './helper'
 import { append0x, u128ToLe } from '../utils'
@@ -53,6 +53,8 @@ export const buildMergeXudtTx = async ({
     amount: totalXudtAmount,
     capacity: totalXudtCapacity,
   } = collector.collectAllXudtInputs(xudtCells.slice(0, cellCount))
+
+  const mergedCellCount = xudtInputs.length
 
   inputs.push(...xudtInputs)
 
@@ -117,7 +119,7 @@ export const buildMergeXudtTx = async ({
   let txFee = calculateTransactionFee(feeRate ? feeRate : BigInt(1500), txSize)
 
   if (inputCapacity === outputCapacity + txFee) {
-    return { rawTx, txFee, freedCkb, remain }
+    return { rawTx, txFee, freedCkb, amount: totalXudtAmount, cellCount: mergedCellCount, remain }
   }
 
   if (inputCapacity >= outputCapacity + txFee + minChangeCapacity) {
@@ -130,7 +132,7 @@ export const buildMergeXudtTx = async ({
     rawTx.outputs = [changeOutput, ...outputs]
     rawTx.outputsData = ['0x', ...outputsData]
 
-    return { rawTx, txFee, freedCkb, remain }
+    return { rawTx, txFee, freedCkb, amount: totalXudtAmount, cellCount: mergedCellCount, remain }
   }
 
   const needCapacity = outputCapacity + txFee - inputCapacity
@@ -156,7 +158,7 @@ export const buildMergeXudtTx = async ({
   rawTx.outputs = [changeOutput, ...outputs]
   rawTx.outputsData = ['0x', ...outputsData]
 
-  return { rawTx, txFee, freedCkb, remain }
+  return { rawTx, txFee, freedCkb, amount: totalXudtAmount, cellCount: mergedCellCount, remain }
 }
 
 export const estimateMergeXudtTx = async (

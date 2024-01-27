@@ -57,6 +57,8 @@ export const buildDestroyXudtTx = async ({
 
   inputs.push(...xudtInputs)
 
+  const destroyedCellCount = xudtInputs.length
+
   let totalOutputCapacity = BigInt(0)
 
   const changeOutput: CKBComponents.CellOutput = {
@@ -114,7 +116,13 @@ export const buildDestroyXudtTx = async ({
     const changeCapacity = totalInputCapacity - (totalOutputCapacity + txFee)
     rawTx.outputs[0].capacity = `0x${changeCapacity.toString(16)}`
 
-    return { rawTx, txFee, freedCkb: totalInputCapacity - txFee, destroyedAmount: totalXudtAmount }
+    return {
+      rawTx,
+      txFee,
+      freedCkb: totalInputCapacity - txFee,
+      cellCount: destroyedCellCount,
+      destroyedAmount: totalXudtAmount,
+    }
   }
 
   const needCapacity = totalOutputCapacity + txFee - totalInputCapacity
@@ -134,7 +142,13 @@ export const buildDestroyXudtTx = async ({
   const changeCapacity = totalInputCapacity - (totalOutputCapacity + txFee)
   rawTx.outputs[0].capacity = `0x${changeCapacity.toString(16)}`
 
-  return { rawTx, txFee, freedCkb: totalInputCapacity - txFee, destroyedAmount: totalXudtAmount }
+  return {
+    rawTx,
+    txFee,
+    freedCkb: totalInputCapacity - txFee,
+    cellCount: destroyedCellCount,
+    destroyedAmount: totalXudtAmount,
+  }
 }
 
 export const buildDestroyXinsTx = async ({
@@ -175,6 +189,8 @@ export const buildDestroyXinsTx = async ({
 
   inputs.push(...xudtInputs)
 
+  const destroyedCellCount = xudtInputs.length
+
   let totalOutputCapacity = BigInt(0)
 
   const changeOutput: CKBComponents.CellOutput = {
@@ -232,7 +248,13 @@ export const buildDestroyXinsTx = async ({
     const changeCapacity = totalInputCapacity - (totalOutputCapacity + txFee)
     rawTx.outputs[0].capacity = `0x${changeCapacity.toString(16)}`
 
-    return { rawTx, txFee, freedCkb: totalInputCapacity - txFee, destroyedAmount: totalXudtAmount }
+    return {
+      rawTx,
+      txFee,
+      freedCkb: totalInputCapacity - txFee,
+      cellCount: destroyedCellCount,
+      destroyedAmount: totalXudtAmount,
+    }
   }
 
   const needCapacity = totalOutputCapacity + txFee - totalInputCapacity
@@ -252,5 +274,11 @@ export const buildDestroyXinsTx = async ({
   const changeCapacity = totalInputCapacity - (totalOutputCapacity + txFee)
   rawTx.outputs[0].capacity = `0x${changeCapacity.toString(16)}`
 
-  return { rawTx, txFee, freedCkb: totalInputCapacity - txFee, destroyedAmount: totalXudtAmount }
+  return {
+    rawTx,
+    txFee,
+    freedCkb: totalInputCapacity - txFee,
+    cellCount: destroyedCellCount,
+    destroyedAmount: totalXudtAmount,
+  }
 }

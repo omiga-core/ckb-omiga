@@ -39,7 +39,7 @@ const transferCkb = async () => {
     'ckt1qrfrwcdnvssswdwpn3s9v8fp87emat306ctjwsm3nmlkjg8qyza2cqgqqy9rpkwdykw5070naqkfekt8c5mucldj8vjm83d3'
 
   console.log('toAddress:', toAddress)
-  const rawTx = await buildTransferCKBTx({
+  const { rawTx } = await buildTransferCKBTx({
     collector,
     cellDeps: [],
     joyID,

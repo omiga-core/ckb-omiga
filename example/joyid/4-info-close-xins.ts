@@ -36,7 +36,7 @@ const close = async () => {
   // the inscriptionId come from inscription deploy transaction
   const inscriptionId = '0xe3eca1280df8643d6a567143e7bad012d394b53a6c4df3eded97d57f8b45f9c7'
 
-  const rawTx: CKBComponents.RawTransaction = await buildCloseTx({
+  const { rawTx } = await buildCloseTx({
     collector,
     cellDeps: [],
     joyID,

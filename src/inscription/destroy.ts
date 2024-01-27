@@ -6,7 +6,15 @@ import {
   serializeWitnessArgs,
 } from '@nervosnetwork/ckb-sdk-utils'
 import { getJoyIDCellDep, getCotaTypeScript, getXudtDep, getXinsDep } from '../constants'
-import { DestroyXinsParams, DestroyXudtParams, Hex, MergeXudtParams, SubkeyUnlockReq } from '../types'
+import {
+  DestroyXinsParams,
+  DestroyXinsResult,
+  DestroyXudtParams,
+  DestroyXudtResult,
+  Hex,
+  MergeXudtParams,
+  SubkeyUnlockReq,
+} from '../types'
 import { calcMinChangeCapacity, calculateTransactionFee } from './helper'
 import { append0x } from '../utils'
 import { InscriptionXudtException, NoCotaCellException, NoLiveCellException } from '../exceptions'
@@ -19,7 +27,7 @@ export const buildDestroyXudtTx = async ({
   xudtType,
   feeRate,
   cellCount,
-}: DestroyXudtParams): Promise<CKBComponents.RawTransaction> => {
+}: DestroyXudtParams): Promise<DestroyXudtResult> => {
   const isMainnet = address.startsWith('ckb')
   const fromLock = addressToScript(address)
 
@@ -43,13 +51,11 @@ export const buildDestroyXudtTx = async ({
 
   let {
     inputs: xudtInputs,
-    amount: _xudtAmount,
-    capacity: xudtCapacity,
+    amount: totalXudtAmount,
+    capacity: totalInputCapacity,
   } = collector.collectAllXudtInputs(xudtCells.slice(0, cellCount))
 
   inputs.push(...xudtInputs)
-
-  let totalInputCapacity = xudtCapacity
 
   let totalOutputCapacity = BigInt(0)
 
@@ -108,7 +114,7 @@ export const buildDestroyXudtTx = async ({
     const changeCapacity = totalInputCapacity - (totalOutputCapacity + txFee)
     rawTx.outputs[0].capacity = `0x${changeCapacity.toString(16)}`
 
-    return rawTx
+    return { rawTx, txFee, freedCkb: totalInputCapacity - txFee, destroyedAmount: totalXudtAmount }
   }
 
   const needCapacity = totalOutputCapacity + txFee - totalInputCapacity
@@ -128,7 +134,7 @@ export const buildDestroyXudtTx = async ({
   const changeCapacity = totalInputCapacity - (totalOutputCapacity + txFee)
   rawTx.outputs[0].capacity = `0x${changeCapacity.toString(16)}`
 
-  return rawTx
+  return { rawTx, txFee, freedCkb: totalInputCapacity - txFee, destroyedAmount: totalXudtAmount }
 }
 
 export const buildDestroyXinsTx = async ({
@@ -139,7 +145,7 @@ export const buildDestroyXinsTx = async ({
   xinsType,
   feeRate,
   cellCount,
-}: DestroyXinsParams): Promise<CKBComponents.RawTransaction> => {
+}: DestroyXinsParams): Promise<DestroyXinsResult> => {
   const isMainnet = address.startsWith('ckb')
   const fromLock = addressToScript(address)
 
@@ -163,13 +169,11 @@ export const buildDestroyXinsTx = async ({
 
   let {
     inputs: xudtInputs,
-    amount: _xudtAmount,
-    capacity: xudtCapacity,
+    amount: totalXudtAmount,
+    capacity: totalInputCapacity,
   } = collector.collectAllXudtInputs(xinsCells.slice(0, cellCount))
 
   inputs.push(...xudtInputs)
-
-  let totalInputCapacity = xudtCapacity
 
   let totalOutputCapacity = BigInt(0)
 
@@ -228,7 +232,7 @@ export const buildDestroyXinsTx = async ({
     const changeCapacity = totalInputCapacity - (totalOutputCapacity + txFee)
     rawTx.outputs[0].capacity = `0x${changeCapacity.toString(16)}`
 
-    return rawTx
+    return { rawTx, txFee, freedCkb: totalInputCapacity - txFee, destroyedAmount: totalXudtAmount }
   }
 
   const needCapacity = totalOutputCapacity + txFee - totalInputCapacity
@@ -248,5 +252,5 @@ export const buildDestroyXinsTx = async ({
   const changeCapacity = totalInputCapacity - (totalOutputCapacity + txFee)
   rawTx.outputs[0].capacity = `0x${changeCapacity.toString(16)}`
 
-  return rawTx
+  return { rawTx, txFee, freedCkb: totalInputCapacity - txFee, destroyedAmount: totalXudtAmount }
 }

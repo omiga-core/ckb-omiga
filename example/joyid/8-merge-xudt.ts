@@ -52,7 +52,7 @@ const destroy = async () => {
 
   console.log('rebasedXudtType: ', JSON.stringify(rebasedXudtType))
 
-  const rawTx = await buildMergeXudtTx({
+  const { rawTx } = await buildMergeXudtTx({
     collector,
     cellDeps: [],
     joyID,

@@ -41,7 +41,7 @@ const rebase = async () => {
 
   console.log('actual supply', actualSupply.toString())
 
-  const rawTx: CKBComponents.RawTransaction = await buildXinsInfoRebaseTx({
+  const { rawTx } = await buildXinsInfoRebaseTx({
     collector,
     cellDeps: [],
     joyID,

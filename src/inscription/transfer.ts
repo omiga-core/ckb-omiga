@@ -143,7 +143,7 @@ export const buildTransferXudtTx = async ({
   let txSize = serializedTx.length + 200
   let txFee = calculateTransactionFee(feeRate ? feeRate : BigInt(1500), txSize)
   if (totalInputCapacity === totalOutputCapacity + txFee) {
-    return { rawTx, packagedCkb, amount: transferAmount }
+    return { rawTx, txFee, packagedCkb, amount: transferAmount }
   }
 
   if (
@@ -167,7 +167,7 @@ export const buildTransferXudtTx = async ({
     rawTx.outputs = [changeOutput, ...outputs]
     rawTx.outputsData = ['0x', ...outputsData]
 
-    return { rawTx, packagedCkb, amount: transferAmount }
+    return { rawTx, txFee, packagedCkb, amount: transferAmount }
   }
 
   const needCapacity = totalOutputCapacity + txFee - totalInputCapacity
@@ -196,7 +196,7 @@ export const buildTransferXudtTx = async ({
   rawTx.outputs = [changeOutput, ...outputs]
   rawTx.outputsData = ['0x', ...outputsData]
 
-  return { rawTx, packagedCkb, amount: transferAmount }
+  return { rawTx, txFee, packagedCkb, amount: transferAmount }
 }
 
 export const buildTransferXinsTx = async ({
@@ -304,7 +304,7 @@ export const buildTransferXinsTx = async ({
   let txSize = serializedTx.length + 200
   let txFee = calculateTransactionFee(feeRate ? feeRate : BigInt(1500), txSize)
   if (totalInputCapacity === totalOutputCapacity + txFee) {
-    return { rawTx, packagedCkb, amount: xinsInputsAmount }
+    return { rawTx, txFee, packagedCkb, amount: xinsInputsAmount }
   }
 
   if (
@@ -328,7 +328,7 @@ export const buildTransferXinsTx = async ({
     rawTx.outputs = [changeOutput, ...outputs]
     rawTx.outputsData = ['0x', ...outputsData]
 
-    return { rawTx, packagedCkb, amount: xinsInputsAmount }
+    return { rawTx, txFee, packagedCkb, amount: xinsInputsAmount }
   }
 
   const needCapacity = totalOutputCapacity + txFee - totalInputCapacity
@@ -354,5 +354,5 @@ export const buildTransferXinsTx = async ({
   rawTx.outputs = [changeOutput, ...outputs]
   rawTx.outputsData = ['0x', ...outputsData]
 
-  return { rawTx, packagedCkb, amount: xinsInputsAmount }
+  return { rawTx, txFee, packagedCkb, amount: xinsInputsAmount }
 }

@@ -15,7 +15,7 @@ import {
   getInscriptionInfoTypeScript,
   getXinsDep,
 } from '../constants'
-import { Address, Hex, MintParams, SubkeyUnlockReq } from '../types'
+import { Address, Hex, MintParams, MintResult, SubkeyUnlockReq } from '../types'
 import {
   calcXudtTypeScript,
   calcMintXudtWitness,
@@ -41,7 +41,7 @@ export const buildMintXudtTx = async ({
   inscriptionId,
   mintLimit,
   feeRate,
-}: MintParams): Promise<CKBComponents.RawTransaction> => {
+}: MintParams): Promise<MintResult> => {
   const isMainnet = address.startsWith('ckb')
   const txFee = feeRate ? calculateTransactionFee(feeRate) : FEE
 
@@ -149,7 +149,7 @@ export const buildMintXudtTx = async ({
     witnesses,
   }
 
-  return rawTx
+  return { rawTx, txFee }
 }
 
 export const buildMintXinsTx = async ({
@@ -160,7 +160,7 @@ export const buildMintXinsTx = async ({
   inscriptionId,
   mintLimit,
   feeRate,
-}: MintParams): Promise<CKBComponents.RawTransaction> => {
+}: MintParams): Promise<MintResult> => {
   const isMainnet = address.startsWith('ckb')
   const txFee = feeRate ? calculateTransactionFee(feeRate) : FEE
 
@@ -268,5 +268,5 @@ export const buildMintXinsTx = async ({
     witnesses,
   }
 
-  return rawTx
+  return { rawTx, txFee }
 }

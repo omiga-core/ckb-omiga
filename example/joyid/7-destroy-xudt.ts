@@ -49,7 +49,7 @@ const destroy = async () => {
   const preXinsHash = scriptToHash(preXinsType)
   const rebasedXudtType = calcRebasedXudtType(inscriptionInfoType, preXinsHash, actualSupply, false)
 
-  const rawTx = await buildDestroyXudtTx({
+  const { rawTx } = await buildDestroyXudtTx({
     collector,
     cellDeps: [],
     joyID,

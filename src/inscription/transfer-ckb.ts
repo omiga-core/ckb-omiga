@@ -1,6 +1,6 @@
 import { addressToScript, serializeWitnessArgs } from '@nervosnetwork/ckb-sdk-utils'
 import { FEE, getJoyIDCellDep } from '../constants'
-import { Hex, TransferCKBParams } from '../types'
+import { Hex, TransferCKBParams, TransferCKBResult } from '../types'
 import { calcMinChangeCapacity, calculateTransactionFee, calculateTransferCkbTxFee } from './helper'
 import { CapacityNotEnoughException } from '../exceptions'
 
@@ -12,8 +12,8 @@ export const buildTransferCKBTx = async ({
   toAddress,
   amount,
   feeRate,
-}: TransferCKBParams): Promise<CKBComponents.RawTransaction> => {
-  const txFee = feeRate ? calculateTransactionFee(feeRate) : FEE
+}: TransferCKBParams): Promise<TransferCKBResult> => {
+  let txFee = feeRate ? calculateTransactionFee(feeRate) : FEE
   const isMainnet = address.startsWith('ckb')
 
   const fromLock = addressToScript(address)
@@ -60,9 +60,9 @@ export const buildTransferCKBTx = async ({
     totalInputCapacity = inputCapacity
     inputs.push(...feeInputs)
 
-    const actualTxFee = calculateTransferCkbTxFee(inputs.length, Number(minChangeBytes), feeRate)
+    txFee = calculateTransferCkbTxFee(inputs.length, Number(minChangeBytes), feeRate)
 
-    let changeCapacity = totalInputCapacity - amount - actualTxFee
+    let changeCapacity = totalInputCapacity - amount - txFee
 
     if (changeCapacity !== BigInt(0)) {
       if (changeCapacity <= minChangeCapacity) {
@@ -70,12 +70,12 @@ export const buildTransferCKBTx = async ({
           cells,
           amount!,
           minChangeCapacity,
-          actualTxFee,
+          txFee,
         )
         inputs = feeInputs
         totalInputCapacity = inputCapacity
 
-        changeCapacity = totalInputCapacity - amount - actualTxFee
+        changeCapacity = totalInputCapacity - amount - txFee
 
         if (changeCapacity <= minChangeCapacity) {
           throw new CapacityNotEnoughException(
@@ -110,5 +110,5 @@ export const buildTransferCKBTx = async ({
     witnesses: inputs.map((_, i) => (i > 0 ? '0x' : serializeWitnessArgs(emptyWitness))),
   }
 
-  return rawTx
+  return { rawTx, txFee, amount }
 }

@@ -47,7 +47,7 @@ const mintXins = async () => {
   }
 
   const mintLimit = info.mintLimit * BigInt(10 ** info.decimal)
-  const rawTx: CKBComponents.RawTransaction = await buildMintXinsTx({
+  const { rawTx } = await buildMintXinsTx({
     collector,
     cellDeps: [],
     joyID,

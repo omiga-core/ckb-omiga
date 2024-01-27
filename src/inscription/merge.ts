@@ -117,7 +117,7 @@ export const buildMergeXudtTx = async ({
   let txFee = calculateTransactionFee(feeRate ? feeRate : BigInt(1500), txSize)
 
   if (inputCapacity === outputCapacity + txFee) {
-    return { rawTx, freedCkb, remain }
+    return { rawTx, txFee, freedCkb, remain }
   }
 
   if (inputCapacity >= outputCapacity + txFee + minChangeCapacity) {
@@ -130,7 +130,7 @@ export const buildMergeXudtTx = async ({
     rawTx.outputs = [changeOutput, ...outputs]
     rawTx.outputsData = ['0x', ...outputsData]
 
-    return { rawTx, freedCkb, remain }
+    return { rawTx, txFee, freedCkb, remain }
   }
 
   const needCapacity = outputCapacity + txFee - inputCapacity
@@ -156,7 +156,7 @@ export const buildMergeXudtTx = async ({
   rawTx.outputs = [changeOutput, ...outputs]
   rawTx.outputsData = ['0x', ...outputsData]
 
-  return { rawTx, freedCkb, remain }
+  return { rawTx, txFee, freedCkb, remain }
 }
 
 export const estimateMergeXudtTx = async (

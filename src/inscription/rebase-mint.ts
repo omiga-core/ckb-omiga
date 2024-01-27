@@ -158,7 +158,7 @@ export const buildRebaseMintXudtTx = async ({
   if (totalInputCapacity >= totalOutputCapacity + txFee + minChangeCapacity) {
     const changeCapacity = totalInputCapacity - (totalOutputCapacity + txFee)
     rawTx.outputs[0].capacity = `0x${changeCapacity.toString(16)}`
-    return { rawTx, rebasedXudtType }
+    return { rawTx, txFee, rebasedXudtType }
   }
 
   const needCapacity = totalOutputCapacity + txFee - totalInputCapacity
@@ -178,7 +178,7 @@ export const buildRebaseMintXudtTx = async ({
 
   const changeCapacity = totalInputCapacity - (totalOutputCapacity + txFee)
   rawTx.outputs[0].capacity = `0x${changeCapacity.toString(16)}`
-  return { rawTx, rebasedXudtType }
+  return { rawTx, txFee, rebasedXudtType }
 }
 
 export const buildRebaseMintXinsTx = async ({
@@ -305,7 +305,7 @@ export const buildRebaseMintXinsTx = async ({
   if (totalInputCapacity >= totalOutputCapacity + txFee + minChangeCapacity) {
     const changeCapacity = totalInputCapacity - (totalOutputCapacity + txFee)
     rawTx.outputs[0].capacity = `0x${changeCapacity.toString(16)}`
-    return { rawTx, rebasedXudtType }
+    return { rawTx, txFee, rebasedXudtType }
   }
 
   const needCapacity = totalOutputCapacity + txFee - totalInputCapacity
@@ -325,5 +325,5 @@ export const buildRebaseMintXinsTx = async ({
 
   const changeCapacity = totalInputCapacity - (totalOutputCapacity + txFee)
   rawTx.outputs[0].capacity = `0x${changeCapacity.toString(16)}`
-  return { rawTx, rebasedXudtType }
+  return { rawTx, txFee, rebasedXudtType }
 }

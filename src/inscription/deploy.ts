@@ -156,7 +156,7 @@ export const buildDeployTx = async ({
     witnesses,
   }
 
-  return { rawTx, inscriptionId, xudtHash: newXudtInfo.xudtHash }
+  return { rawTx, txFee, inscriptionId, xudtHash: newXudtInfo.xudtHash }
 }
 
 export const buildDeployXinsTx = async ({
@@ -269,5 +269,5 @@ export const buildDeployXinsTx = async ({
     witnesses,
   }
 
-  return { rawTx, inscriptionId, xinsHash: newXinsInfo.xinsHash }
+  return { rawTx, txFee, inscriptionId, xinsHash: newXinsInfo.xinsHash }
 }

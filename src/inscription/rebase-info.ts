@@ -12,7 +12,7 @@ import {
   getInscriptionInfoDep,
   getCotaTypeScript,
 } from '../constants'
-import { ActualSupplyParams, Hex, InfoRebaseParams, SubkeyUnlockReq } from '../types'
+import { ActualSupplyParams, Hex, InfoRebaseParams, RebaseInfoResult, SubkeyUnlockReq } from '../types'
 import {
   calcActualSupply,
   calcRebasedXudtHash,
@@ -66,7 +66,7 @@ export const buildXudtInfoRebaseTx = async ({
   inscriptionId,
   actualSupply,
   feeRate,
-}: InfoRebaseParams): Promise<CKBComponents.RawTransaction> => {
+}: InfoRebaseParams): Promise<RebaseInfoResult> => {
   const isMainnet = address.startsWith('ckb')
   const txFee = feeRate ? calculateTransactionFee(feeRate) : FEE
   const fromLock = addressToScript(address)
@@ -172,7 +172,7 @@ export const buildXudtInfoRebaseTx = async ({
     witnesses,
   }
 
-  return rawTx
+  return { rawTx, txFee }
 }
 
 export const buildXinsInfoRebaseTx = async ({
@@ -183,7 +183,7 @@ export const buildXinsInfoRebaseTx = async ({
   inscriptionId,
   actualSupply,
   feeRate,
-}: InfoRebaseParams): Promise<CKBComponents.RawTransaction> => {
+}: InfoRebaseParams): Promise<RebaseInfoResult> => {
   const isMainnet = address.startsWith('ckb')
   const txFee = feeRate ? calculateTransactionFee(feeRate) : FEE
   const fromLock = addressToScript(address)
@@ -289,5 +289,5 @@ export const buildXinsInfoRebaseTx = async ({
     witnesses,
   }
 
-  return rawTx
+  return { rawTx, txFee }
 }

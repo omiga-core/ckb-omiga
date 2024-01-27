@@ -47,14 +47,25 @@ export interface DeployXinsParams extends BaseParams {
 
 export interface DeployResult {
   rawTx: CKBComponents.RawTransaction
+  txFee: bigint
   inscriptionId: Hex
   xudtHash: Byte32
 }
 
 export interface DeployXinsResult {
   rawTx: CKBComponents.RawTransaction
+  txFee: bigint
   inscriptionId: Hex
   xinsHash: Byte32
+}
+
+export interface CloseParams extends BaseParams {
+  inscriptionId: Byte32
+}
+
+export interface CloseResult {
+  rawTx: CKBComponents.RawTransaction
+  txFee: bigint
 }
 
 export interface MintParams extends BaseParams {
@@ -62,8 +73,9 @@ export interface MintParams extends BaseParams {
   mintLimit: bigint
 }
 
-export interface CloseParams extends BaseParams {
-  inscriptionId: Byte32
+export interface MintResult {
+  rawTx: CKBComponents.RawTransaction
+  txFee: bigint
 }
 
 export interface ActualSupplyParams {
@@ -75,6 +87,11 @@ export interface ActualSupplyParams {
 export interface InfoRebaseParams extends BaseParams {
   inscriptionId: Byte32
   actualSupply: bigint
+}
+
+export interface RebaseInfoResult {
+  rawTx: CKBComponents.RawTransaction
+  txFee: bigint
 }
 
 export interface RebaseMintXudtParams extends BaseParams {
@@ -91,16 +108,10 @@ export interface RebaseMintXinsParams extends BaseParams {
   cellCount?: number
 }
 
-export interface TransferXudtResult {
+export interface RebaseMintResult {
   rawTx: CKBComponents.RawTransaction
-  packagedCkb: bigint
-  amount: bigint
-}
-
-export interface MergeXudtResult {
-  rawTx: CKBComponents.RawTransaction
-  freedCkb: bigint
-  remain: boolean
+  txFee: bigint
+  rebasedXudtType: CKBComponents.Script
 }
 
 export interface EstimateMergeXudtResult {
@@ -108,20 +119,16 @@ export interface EstimateMergeXudtResult {
   remain: boolean
 }
 
-export interface TransferXinsResult {
-  rawTx: CKBComponents.RawTransaction
-  packagedCkb: bigint
-  amount: bigint
-}
-
-export interface RebaseMintResult {
-  rawTx: CKBComponents.RawTransaction
-  rebasedXudtType: CKBComponents.Script
-}
-
 export interface MergeXudtParams extends BaseParams {
   xudtType: CKBComponents.Script
   cellCount?: number
+}
+
+export interface MergeXudtResult {
+  rawTx: CKBComponents.RawTransaction
+  txFee: bigint
+  freedCkb: bigint
+  remain: boolean
 }
 
 export interface DestroyXudtParams extends BaseParams {
@@ -129,9 +136,23 @@ export interface DestroyXudtParams extends BaseParams {
   cellCount?: number
 }
 
+export interface DestroyXudtResult {
+  rawTx: CKBComponents.RawTransaction
+  txFee: bigint
+  freedCkb: bigint
+  destroyedAmount: bigint
+}
+
 export interface DestroyXinsParams extends BaseParams {
   xinsType: CKBComponents.Script
   cellCount?: number
+}
+
+export interface DestroyXinsResult {
+  rawTx: CKBComponents.RawTransaction
+  txFee: bigint
+  freedCkb: bigint
+  destroyedAmount: bigint
 }
 
 export interface TransferXudtParams extends BaseParams {
@@ -146,13 +167,27 @@ export interface TransferXinsParams extends BaseParams {
   cellCount?: number
 }
 
+export interface TransferXudtResult {
+  rawTx: CKBComponents.RawTransaction
+  txFee: bigint
+  packagedCkb: bigint
+  amount: bigint
+}
+
+export interface TransferXinsResult {
+  rawTx: CKBComponents.RawTransaction
+  txFee: bigint
+  packagedCkb: bigint
+  amount: bigint
+}
+
 export interface TransferCKBParams extends BaseParams {
   toAddress: Address
   amount?: Capacity
 }
 
-export interface RebasedTransferParams extends BaseParams {
-  rebasedXudtType: CKBComponents.Script
-  toAddress: Address
-  cellCount?: number
+export interface TransferCKBResult {
+  rawTx: CKBComponents.RawTransaction
+  txFee: bigint
+  amount: bigint
 }
